@@ -2454,29 +2454,22 @@ class SACLearner:
         # --- Actor更新 ---
         probs = self.actor(s)
         probs_flat = probs.view(B, JOINT_ACTION_DIM)
-
         log_probs = torch.log(probs + 1e-10)
         log_probs_flat = log_probs.view(B, JOINT_ACTION_DIM)
-
         q1_pi = self.critic1(s, probs_flat)
         q2_pi = self.critic2(s, probs_flat)
         q_pi = torch.min(q1_pi, q2_pi)
-
         ent = (probs_flat * log_probs_flat).sum(dim=1, keepdim=True)
         loss_actor = (self.alpha * ent - q_pi).mean()
-
         self.opt_actor.zero_grad()
         loss_actor.backward()
         self.opt_actor.step()
-
         total_loss += loss_actor.item()
-
         # --- 软更新目标网络 ---
         for target_param, param in zip(self.target_critic1.parameters(), self.critic1.parameters()):
             target_param.data.copy_(target_param.data * (1.0 - self.tau) + param.data * self.tau)
         for target_param, param in zip(self.target_critic2.parameters(), self.critic2.parameters()):
             target_param.data.copy_(target_param.data * (1.0 - self.tau) + param.data * self.tau)
-
         self.loss_history.append(total_loss)
         return total_loss
 
@@ -2494,7 +2487,6 @@ class SACAlgorithmRunner(AlgorithmRunner):
 
     def run(self, channel_data, num_steps=10000):
         start_time = time.time()
-
         for step in range(num_steps):
             # 获取当前信道状态
             current_channels = channel_data[step]
@@ -2580,20 +2572,8 @@ def main():
         print(f"\n{'=' * 50}")
         print(f"开始运行 {algorithm.algorithm_name}")
         print(f"{'=' * 50}")
-
-        # if hasattr(algorithm, 'k_history'):
-        #     rewards, losses, training_time = algorithm.run(channel_data, num_steps=1000)
-        #     comparator.add_result(algorithm.algorithm_name, rewards, losses, training_time, algorithm.k_history)
-        # else:
         rewards, losses, training_time = algorithm.run(channel_data, num_steps=10000)
         comparator.add_result(algorithm.algorithm_name, rewards, losses, training_time)
-
-        # # 保存结果到文件
-        # filename = f"{algorithm.algorithm_name.replace(' ', '_').replace('(', '').replace(')', '')}_results.txt"
-        # with open(filename, 'w') as f:
-        #     for reward in rewards:
-        #         f.write(f"{reward}\n")
-
         print(f"{algorithm.algorithm_name} 完成")
 
     # 生成对比结果
